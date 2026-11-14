@@ -24,15 +24,16 @@ jobs:
           tar -xf "$SDK_FILE" -C sdk --strip-components=1
           rm -f "$SDK_FILE"
 
-      - name: Prepare all repository packages and feeds
+      - name: Prepare corosync-qnetd with official OpenWrt libnss
         run: |
-          for mf in $(find . -maxdepth 4 -not -path './sdk/*' -not -path './.git/*' -name 'Makefile'); do
-            pkg_dir=$(dirname "$mf")
-            pkg_name=$(basename "$pkg_dir")
-            echo "Copying package $pkg_name from $pkg_dir"
-            mkdir -p "sdk/package/$pkg_name"
-            cp -r "$pkg_dir"/* "sdk/package/$pkg_name/"
-          done
+          PKG_MAKEFILE=$(find . -maxdepth 4 -not -path './sdk/*' -not -path './.git/*' -path '*corosync-qnetd*' -name 'Makefile' | head -n 1)
+          PKG_DIR=$(dirname "$PKG_MAKEFILE")
+          mkdir -p sdk/package/corosync-qnetd
+          cp -r "$PKG_DIR"/* sdk/package/corosync-qnetd/
+
+          # Vaihdetaan räätälöity nss-qnetd OpenWrt 25.12.5:n virallisiin paketteihin
+          sed -i 's/+nss-qnetd/+libnss +nss-utils/g' sdk/package/corosync-qnetd/Makefile
+          sed -i 's/nss-qnetd/libnss/g' sdk/package/corosync-qnetd/Makefile
 
           cd sdk
           ./scripts/feeds update base packages
@@ -42,10 +43,14 @@ jobs:
       - name: Compile corosync-qnetd
         run: |
           cd sdk
-          make package/corosync-qnetd/compile V=s -j$(nproc)
+          if ! make package/corosync-qnetd/compile V=s -j1 > build.log 2>&1; then
+            echo "=== VIIMEISET 60 VIRHERIVIÄ ==="
+            tail -n 60 build.log
+            exit 1
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: corosync-qnetd-ax59u-25.12.5
-          path: sdk/bin/packages/aarch64_cortex-a53/base/*.apk
+          path: sdk/bin/packages/aarch64_cortex-a53/base/corosync-qnetd-*.apk
