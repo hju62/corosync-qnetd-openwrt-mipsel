@@ -1,0 +1,31 @@
+name: Build corosync-qnetd (RT-AX59U / 25.12.5)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: openwrt/sdk:mediatek-filogic-25.12.5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare SDK and package
+        run: |
+          cp -r /builder/* .
+          mkdir -p package/corosync-qnetd
+          cp -r corosync-qnetd/* package/corosync-qnetd/
+          ./scripts/feeds update base packages
+          ./scripts/feeds install libnss nspr nss-utils openssl-util
+          make defconfig
+
+      - name: Compile corosync-qnetd
+        run: |
+          make package/corosync-qnetd/compile V=s
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: corosync-qnetd-ax59u-25.12.5
+          path: bin/packages/aarch64_cortex-a53/base/corosync-qnetd-*.apk
