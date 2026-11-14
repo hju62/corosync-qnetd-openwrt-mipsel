@@ -20,8 +20,9 @@ jobs:
           SDK_FILE=$(wget -qO- "$BASE_URL/" | grep -oE 'openwrt-sdk-25\.12\.5-mediatek-filogic_[^"]+\.tar\.(zst|xz)' | head -n 1)
           echo "Downloading $SDK_FILE"
           wget -q "$BASE_URL/$SDK_FILE"
-          tar -xf "$SDK_FILE"
-          mv openwrt-sdk-25.12.5-* sdk
+          mkdir -p sdk
+          tar -xf "$SDK_FILE" -C sdk --strip-components=1
+          rm -f "$SDK_FILE"
 
       - name: Prepare package and feeds
         run: |
