@@ -26,13 +26,14 @@ jobs:
 
       - name: Prepare package and feeds
         run: |
+          PKG_MAKEFILE=$(find . -maxdepth 4 -not -path './sdk/*' -not -path './.git/*' -name 'Makefile' | head -n 1)
+          echo "Found Makefile at: $PKG_MAKEFILE"
+          PKG_DIR=$(dirname "$PKG_MAKEFILE")
+          mkdir -p sdk/package/corosync-qnetd
+          cp -r "$PKG_DIR"/* sdk/package/corosync-qnetd/
+          ls -la sdk/package/corosync-qnetd/
+
           cd sdk
-          mkdir -p package/corosync-qnetd
-          if [ -d "../corosync-qnetd" ]; then
-            cp -r ../corosync-qnetd/* package/corosync-qnetd/
-          else
-            cp -r ../Makefile ../files ../patches package/corosync-qnetd/ 2>/dev/null || true
-          fi
           ./scripts/feeds update base packages
           ./scripts/feeds install libnss nspr nss-utils openssl-util
           make defconfig
