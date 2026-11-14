@@ -24,27 +24,28 @@ jobs:
           tar -xf "$SDK_FILE" -C sdk --strip-components=1
           rm -f "$SDK_FILE"
 
-      - name: Prepare package and feeds
+      - name: Prepare all repository packages and feeds
         run: |
-          PKG_MAKEFILE=$(find . -maxdepth 4 -not -path './sdk/*' -not -path './.git/*' -name 'Makefile' | head -n 1)
-          echo "Found Makefile at: $PKG_MAKEFILE"
-          PKG_DIR=$(dirname "$PKG_MAKEFILE")
-          mkdir -p sdk/package/corosync-qnetd
-          cp -r "$PKG_DIR"/* sdk/package/corosync-qnetd/
-          ls -la sdk/package/corosync-qnetd/
+          for mf in $(find . -maxdepth 4 -not -path './sdk/*' -not -path './.git/*' -name 'Makefile'); do
+            pkg_dir=$(dirname "$mf")
+            pkg_name=$(basename "$pkg_dir")
+            echo "Copying package $pkg_name from $pkg_dir"
+            mkdir -p "sdk/package/$pkg_name"
+            cp -r "$pkg_dir"/* "sdk/package/$pkg_name/"
+          done
 
           cd sdk
           ./scripts/feeds update base packages
-          ./scripts/feeds install libnss nspr nss-utils openssl-util
+          ./scripts/feeds install bash coreutils openssh-sftp-server procps-ng nspr libnss nss-utils openssl-util
           make defconfig
 
       - name: Compile corosync-qnetd
         run: |
           cd sdk
-          make package/corosync-qnetd/compile V=s
+          make package/corosync-qnetd/compile V=s -j$(nproc)
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: corosync-qnetd-ax59u-25.12.5
-          path: sdk/bin/packages/aarch64_cortex-a53/base/corosync-qnetd-*.apk
+          path: sdk/bin/packages/aarch64_cortex-a53/base/*.apk
